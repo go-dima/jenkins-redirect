@@ -5,7 +5,7 @@ const JENKINS_URL = "";
 const TARGET_GITHUB_URL = "";
 
 // State
-let directJobObj: Job = undefined;
+const tabIdToJobObj = {};
 
 // types
 interface Job {
@@ -16,30 +16,43 @@ interface Job {
 
 chrome.action.onClicked.addListener(loadJenkinsPage);
 
+chrome.tabs.onRemoved.addListener((tabId) => {
+  delete tabIdToJobObj[tabId];
+});
+
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (changeInfo.status === "complete") {
-    await updateDirectJobObj();
+    await updateDirectJobObj(tabId);
+    const badge = {
+      tabId,
+      text: tabIdToJobObj[tabId] ? "V" : "",
+    };
+    chrome.action.setBadgeText(badge);
   }
 });
 
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
-  await updateDirectJobObj();
+  await updateDirectJobObj(activeInfo.tabId);
+  const badge = {
+    tabId: activeInfo.tabId,
+    text: tabIdToJobObj[activeInfo.tabId] ? "V" : "",
+  };
+  chrome.action.setBadgeText(badge);
 });
 
-async function updateDirectJobObj() {
+async function updateDirectJobObj(tabId: number) {
   const { repoName, branchName } = await getGitHubRepoBranch();
   if (repoName) {
     const job = await getBranch(repoName, branchName);
     if (job) {
-      directJobObj = job;
+      tabIdToJobObj[tabId] = job;
     }
   }
-  chrome.action.setBadgeText(directJobObj ? { text: "V" } : { text: "" });
 }
 
-async function loadJenkinsPage() {
-  if (directJobObj) {
-    chrome.tabs.create({ url: directJobObj.url });
+async function loadJenkinsPage(tab: chrome.tabs.Tab) {
+  if (tabIdToJobObj[tab.id]) {
+    chrome.tabs.create({ url: tabIdToJobObj[tab.id].url });
     return;
   } else {
     const { repoName, branchName } = await getGitHubRepoBranch();
@@ -60,13 +73,17 @@ async function getGitHubRepoBranch(): Promise<{
   branchName: string;
 }> {
   const activeTab = await getActiveTab();
-  if (activeTab && !activeTab.url.startsWith(KODEM_GITHUB_URL)) {
+  if (notGithubPage(activeTab)) {
     return { repoName: "", branchName: "" };
   }
 
   const { repoName, branchName } = parseRepoUrl(activeTab);
   console.log(repoName, branchName);
   return { repoName, branchName };
+}
+
+function notGithubPage(activeTab: chrome.tabs.Tab) {
+  return activeTab && !activeTab.url.startsWith(TARGET_GITHUB_URL);
 }
 
 function parseRepoUrl(tab) {
