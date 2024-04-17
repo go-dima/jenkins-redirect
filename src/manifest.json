@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "Jenkins <--> Github Extension",
+  "description": "An extension to make transitioning between Jenkins and GitHub easier",
+  "version": "0.0.1",
+  "action": {
+    "default_title": "Jenkins"
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*", "<all_urls>"],
+      "js": ["js/contentScript.bundle.js"],
+
+      "run_at": "document_end"
+    }
+  ],
+  "background": {
+    "service_worker": "js/eventPage.bundle.js",
+    "matches": ["https://github.com/*", "https://jenkins.*"]
+  },
+  "icons": {
+    "16": "logo.png",
+    "48": "logo.png",
+    "128": "logo.png"
+  },
+  "permissions": ["tabs", "activeTab"],
+  "host_permissions": ["https://github.com/*", "https://jenkins.*"]
+}
