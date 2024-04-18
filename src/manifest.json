@@ -4,7 +4,8 @@
   "description": "An extension to make transitioning between Jenkins and GitHub easier",
   "version": "0.0.1",
   "action": {
-    "default_title": "Jenkins"
+    "default_title": "Jenkins",
+    "default_popup": "js/popup.html"
   },
   "content_scripts": [
     {
@@ -24,5 +25,5 @@
     "128": "logo.png"
   },
   "permissions": ["tabs", "activeTab"],
-  "host_permissions": ["https://github.com/*", "https://jenkins.*"]
+  "host_permissions": ["https://github.com/*", "<all_urls>"]
 }

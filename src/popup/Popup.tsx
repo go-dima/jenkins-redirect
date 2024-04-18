@@ -1,31 +1,19 @@
 import { useEffect, useState } from "react";
 import "./Popup.css";
 import React from "react";
+import BuildsList from "./BuildsList";
 
-const Popup = () => {
-  const [data, setData] = useState("");
+export const Popup = () => {
+  const [data, setData] = useState([]);
   useEffect(() => {
-    // Example of how to send a message to eventPage.ts.
-    chrome.runtime.sendMessage({ popupMounted: true }, (response) => {
-      setData(response.data);
+    chrome.runtime.sendMessage({ getBuildUrls: true }, (response) => {
+      setData(response);
     });
-  }, []);
+  }, [data]);
 
   return (
     <div className="popupComponent">
-      <header className="popupHeader">
-        <a>
-          <button
-            onClick={() => {
-              chrome.tabs.create({
-                url: "https://google.com",
-              });
-            }}>
-            Open Google
-          </button>
-        </a>
-        <p>{data}</p>
-      </header>
+      <BuildsList className="popupList" jobs={data} />
     </div>
   );
 };
