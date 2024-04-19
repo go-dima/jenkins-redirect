@@ -21,7 +21,7 @@ interface Job {
 chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
   if (!request.getBuildUrls) return;
 
-  if ("latestBuilds" in tabIdToJobObj[activeTabId]) {
+  if (tabIdToJobObj[activeTabId]?.latestBuilds) {
     const latestBuilds = tabIdToJobObj[activeTabId].latestBuilds;
     sendResponse(latestBuilds);
   } else {

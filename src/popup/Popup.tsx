@@ -13,7 +13,17 @@ export const Popup = () => {
 
   return (
     <div className="popupComponent">
-      <BuildsList className="popupList" jobs={data} />
+      <BuildsList className="popupList-header" jobs={data} />
+      <div className="popupList-footer">
+        <img
+          className="popupList-image"
+          src="../logo.png"
+          alt={"Go to Jenkins"}
+          onClick={() => {
+            chrome.runtime.sendMessage({ loadJenkinsPage: true });
+          }}
+        />
+      </div>
     </div>
   );
 };

@@ -5,7 +5,7 @@ export interface Build {
   building: boolean;
 }
 
-export interface BuildsListProps extends React.HTMLProps<HTMLUListElement> {
+export interface BuildsListProps extends React.HTMLProps<HTMLDivElement> {
   jobs: {
     _class: string;
     number: number;
