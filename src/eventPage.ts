@@ -1,14 +1,10 @@
 // Listen to messages sent from other parts of the extension.
 
+import { JENKINS_URL, TARGET_GITHUB_URL } from "./settings";
 import { fetchJson } from "./utils";
-
-// Config?
-const JENKINS_URL = "";
-const TARGET_GITHUB_URL = "";
 
 // State
 const tabIdToJobObj = {};
-let activeTabId: number = null;
 
 // types
 interface Job {
@@ -18,15 +14,25 @@ interface Job {
   builds?: { url: string }[];
 }
 
-chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
-  if (!request.getBuildUrls) return;
+chrome.runtime.onConnect.addListener((port) => {
+  port.onMessage.addListener(async (msg) => {
+    if (!msg.getBuildUrls) return;
 
-  if (tabIdToJobObj[activeTabId]?.latestBuilds) {
-    const latestBuilds = tabIdToJobObj[activeTabId].latestBuilds;
-    sendResponse(latestBuilds);
-  } else {
-    sendResponse([]);
-  }
+    const { id: activeTabId } = await getActiveTab();
+    const job = tabIdToJobObj[activeTabId];
+    if (!job) {
+      port.postMessage({ data: [], err: "No access to Jenkins" });
+      return;
+    }
+
+    const latestBuilds = await getLatestBuilds(job.url);
+    if (latestBuilds) {
+      port.postMessage({ data: latestBuilds });
+    } else {
+      port.postMessage({ data: [], err: "No builds found" });
+    }
+    return true;
+  });
 });
 
 chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
@@ -62,10 +68,9 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
   chrome.action.setBadgeText(badge);
 });
 
-async function getLatestBuilds(tabId: number) {
-  const jobDetails = tabIdToJobObj[tabId];
-  const { builds } = await fetchJson(jobDetails.url);
-  return builds.slice(0, 5);
+async function getLatestBuilds(jobUrl: string) {
+  const { builds } = await fetchJson(jobUrl);
+  return builds?.slice(0, 5);
 }
 
 async function updateDirectJobObj(tabId: number) {
@@ -73,10 +78,7 @@ async function updateDirectJobObj(tabId: number) {
   if (repoName) {
     const job = await getBranch(repoName, branchName);
     if (job) {
-      activeTabId = tabId;
       tabIdToJobObj[tabId] = job;
-      const latestBuilds = await getLatestBuilds(tabId);
-      tabIdToJobObj[tabId].latestBuilds = latestBuilds;
     }
   }
 }

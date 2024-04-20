@@ -1,23 +1,17 @@
 import React, { useEffect, useState } from "react";
 import { fetchJson } from "../utils";
-import { Build, BuildsListProps } from "./BuildsList.types";
-import { Spin } from "antd";
-import { LoadingOutlined } from "@ant-design/icons";
+import { Build } from "./BuildsList.types";
+import ResultIcon from "./ResultIcon";
 
-const getIconForResult = (result: string) => {
-  switch (result) {
-    case "SUCCESS":
-      return "✅";
-    case "FAILURE":
-      return "❌";
-    case "ABORTED":
-      return "⛔";
-    default:
-      return "🔵"; // Default icon for other results
-  }
-};
+export interface BuildsListProps extends React.HTMLProps<HTMLDivElement> {
+  jobs: {
+    _class: string;
+    number: number;
+    url: string;
+  }[];
+}
 
-const BuildsList: React.FC<BuildsListProps> = ({ jobs, ...props }) => {
+const BuildsList: React.FC<BuildsListProps> = ({ jobs }) => {
   const [builds, setBuilds] = useState<Build[]>(undefined);
 
   useEffect(() => {
@@ -39,24 +33,16 @@ const BuildsList: React.FC<BuildsListProps> = ({ jobs, ...props }) => {
   }, [jobs]);
 
   return (
-    <div {...props}>
-      {!!builds?.length ? (
-        <ul className="pupupList">
-          {builds?.map((build, index) => (
-            <li key={index}>
-              {build.building ? (
-                <span>🚧</span>
-              ) : (
-                <span>{getIconForResult(build.result)}</span>
-              )}
-              <a href={build.url}>{build.displayName}</a>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <Spin indicator={<LoadingOutlined style={{ fontSize: 24 }} spin />} />
-      )}
-    </div>
+    <ul className="popupList">
+      {builds?.map((build, index) => (
+        <li key={index}>
+          <ResultIcon build={build} />
+          <button onClick={() => chrome.tabs.create({ url: build.url })}>
+            {build.displayName}
+          </button>
+        </li>
+      ))}
+    </ul>
   );
 };
 
