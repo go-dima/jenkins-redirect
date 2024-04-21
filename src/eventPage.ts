@@ -50,23 +50,36 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (changeInfo.status === "complete") {
-    await updateDirectJobObj(tabId);
-    const badge = {
-      tabId,
-      text: tabIdToJobObj[tabId] ? "V" : "",
-    };
-    chrome.action.setBadgeText(badge);
+    const job = await updateDirectJobObj(tabId);
+    setBadge(tabId, job);
   }
 });
 
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
-  await updateDirectJobObj(activeInfo.tabId);
-  const badge = {
-    tabId: activeInfo.tabId,
-    text: tabIdToJobObj[activeInfo.tabId] ? "V" : "",
-  };
-  chrome.action.setBadgeText(badge);
+  const job = await updateDirectJobObj(activeInfo.tabId);
+  setBadge(activeInfo.tabId, job);
 });
+
+async function setBadge(tabId: number, job: any) {
+  try {
+    const { lastBuild } = await fetchJson(job?.url);
+    const { building, result } = await fetchJson(lastBuild.url);
+    const statusToBadgeInfo: Record<string, any> = {
+      SUCCESS: { text: "V", color: "#00FF00" },
+      FAILURE: { text: "X", color: "#FF0000" },
+      ABORTED: { text: "-", color: "#FFA500" },
+    };
+
+    const { text, color } = statusToBadgeInfo[result] || {};
+    chrome.action.setBadgeText({ text, tabId });
+    chrome.action.setBadgeBackgroundColor({
+      color: building ? "#0000FF" : color,
+      tabId,
+    });
+  } catch (error) {
+    // Don't care
+  }
+}
 
 async function getLatestBuilds(jobUrl: string) {
   const { builds } = await fetchJson(jobUrl);
@@ -76,10 +89,11 @@ async function getLatestBuilds(jobUrl: string) {
 async function updateDirectJobObj(tabId: number) {
   const { repoName, branchName } = await getGitHubRepoBranch();
   if (repoName) {
-    const job = await getBranch(repoName, branchName);
+    const job = await getBranchJob(repoName, branchName);
     if (job) {
       tabIdToJobObj[tabId] = job;
     }
+    return job;
   }
 }
 
@@ -126,11 +140,10 @@ function parseRepoUrl(tab) {
   return { repoName, branchName };
 }
 
-async function getBranch(projectName: string, branchName: string = "main") {
+async function getBranchJob(projectName: string, branchName: string = "main") {
   try {
-    const data: { jobs: Job[] } = await fetchJson(JENKINS_URL);
-    const jobs = data.jobs || [];
-    const jobData = await Promise.all(jobs.map((job) => fetchJson(job.url)));
+    const { jobs }: { jobs: Job[] } = await fetchJson(JENKINS_URL);
+    const jobData = await Promise.all(jobs?.map((job) => fetchJson(job.url)));
 
     for (let i = 0; i < jobData.length; i++) {
       const projectJobs = jobData[i].jobs || [];
@@ -139,15 +152,12 @@ async function getBranch(projectName: string, branchName: string = "main") {
       );
 
       if (projectJob) {
-        const branchData = await fetchJson(projectJob.url);
-        const branches = branchData.jobs || [];
-        const branch = branches.find(
+        const { jobs: branches } = await fetchJson(projectJob.url);
+        const branchJob = branches?.find(
           (branchBuild: Job) => branchBuild.name === branchName
         );
 
-        if (branch) {
-          return branch;
-        }
+        return branchJob;
       }
     }
 

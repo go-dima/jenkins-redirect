@@ -32,9 +32,7 @@ const changeTitle = async () => {
         document.title = emoji + " " + document.title;
       });
     })
-    .catch((error) => {
-      console.error("Error:", error);
-    });
+    .catch(() => {});
 };
 
 // check that the href matches jenkins.*.dev
