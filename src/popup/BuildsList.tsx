@@ -2,17 +2,21 @@ import React, { useEffect, useState } from "react";
 import { fetchJson } from "../utils";
 import { Build } from "./BuildsList.types";
 import ResultIcon from "./ResultIcon";
+import { mockBuilds } from "../mockData/buildsResponse";
 
-export interface BuildsListProps extends React.HTMLProps<HTMLDivElement> {
+interface BuildsListProps extends React.HTMLProps<HTMLDivElement> {
   jobs: {
     _class: string;
     number: number;
     url: string;
   }[];
+  isStory?: boolean;
 }
 
-const BuildsList: React.FC<BuildsListProps> = ({ jobs }) => {
-  const [builds, setBuilds] = useState<Build[]>(undefined);
+const BuildsList: React.FC<BuildsListProps> = ({ jobs, isStory }) => {
+  const [builds, setBuilds] = useState<Build[]>(
+    isStory ? mockBuilds : undefined
+  );
 
   useEffect(() => {
     const fetchBuilds = async () => {
@@ -29,7 +33,7 @@ const BuildsList: React.FC<BuildsListProps> = ({ jobs }) => {
       } catch (error) {}
     };
 
-    fetchBuilds();
+    if (!isStory) fetchBuilds();
   }, [jobs]);
 
   return (
