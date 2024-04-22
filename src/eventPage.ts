@@ -1,18 +1,11 @@
-// Listen to messages sent from other parts of the extension.
-
+import initAlarm from "./alarm";
 import { JENKINS_URL, TARGET_GITHUB_URL } from "./settings";
+import { getActiveTab, setBadge } from "./shared.helpers";
+import { tabIdToJobObj } from "./shared.state";
+import { Job } from "./shared.types";
 import { fetchJson } from "./utils";
 
-// State
-const tabIdToJobObj = {};
-
-// types
-interface Job {
-  name: string;
-  url: string;
-  jobs?: Job[];
-  builds?: { url: string }[];
-}
+initAlarm();
 
 chrome.runtime.onConnect.addListener((port) => {
   port.onMessage.addListener(async (msg) => {
@@ -51,35 +44,18 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (changeInfo.status === "complete") {
     const job = await updateDirectJobObj(tabId);
-    setBadge(tabId, job);
+    const { lastBuild } = await fetchJson(job?.url);
+    const { building, result } = await fetchJson(lastBuild.url);
+    setBadge(tabId, building, result);
   }
 });
 
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
   const job = await updateDirectJobObj(activeInfo.tabId);
-  setBadge(activeInfo.tabId, job);
+  const { lastBuild } = await fetchJson(job?.url);
+  const { building, result } = await fetchJson(lastBuild.url);
+  setBadge(activeInfo.tabId, building, result);
 });
-
-async function setBadge(tabId: number, job: any) {
-  try {
-    const { lastBuild } = await fetchJson(job?.url);
-    const { building, result } = await fetchJson(lastBuild.url);
-    const statusToBadgeInfo: Record<string, any> = {
-      SUCCESS: { text: "V", color: "#00FF00" },
-      FAILURE: { text: "X", color: "#FF0000" },
-      ABORTED: { text: "-", color: "#FFA500" },
-    };
-
-    const { text, color } = statusToBadgeInfo[result] || {};
-    chrome.action.setBadgeText({ text, tabId });
-    chrome.action.setBadgeBackgroundColor({
-      color: building ? "#0000FF" : color,
-      tabId,
-    });
-  } catch (error) {
-    // Don't care
-  }
-}
 
 async function getLatestBuilds(jobUrl: string) {
   const { builds } = await fetchJson(jobUrl);
@@ -108,11 +84,6 @@ async function loadJenkinsPage(tab: chrome.tabs.Tab) {
       url: `${JENKINS_URL}/search/?q=${searchTerm}`,
     });
   }
-}
-
-async function getActiveTab() {
-  const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-  return tabs[0];
 }
 
 async function getGitHubRepoBranch(): Promise<{

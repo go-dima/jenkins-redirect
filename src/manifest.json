@@ -24,6 +24,6 @@
     "48": "logo.png",
     "128": "logo.png"
   },
-  "permissions": ["tabs", "activeTab"],
+  "permissions": ["tabs", "activeTab", "alarms"],
   "host_permissions": ["https://github.com/*", "<all_urls>"]
 }
