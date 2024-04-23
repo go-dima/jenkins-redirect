@@ -3,10 +3,9 @@ import { tabIdToJobObj } from "./shared.state";
 import { fetchJson } from "./utils";
 
 const updateAlarm = "updateAlarm";
-const updateAlarmWhenBuilding = "updateAlarmWhenBuilding";
 
 async function handleAlarm(alarm: chrome.alarms.Alarm) {
-  if (alarm.name === updateAlarm || alarm.name === updateAlarmWhenBuilding) {
+  if (alarm.name === updateAlarm) {
     const { id: tabId } = await getActiveTab();
     if (tabId in tabIdToJobObj) {
       const job = tabIdToJobObj[tabId];
@@ -15,23 +14,25 @@ async function handleAlarm(alarm: chrome.alarms.Alarm) {
       if (lastBuild) {
         const { building, result } = await fetchJson(lastBuild.url);
         setBadge(tabId, building, result);
-        resetBuildingAlarm(building);
       }
     }
   }
 }
 
-function resetBuildingAlarm(building: boolean) {
-  if (building) {
-    chrome.alarms.create(updateAlarmWhenBuilding, { periodInMinutes: 1 / 2 });
-  } else {
-    chrome.alarms.clear(updateAlarmWhenBuilding);
-  }
-}
+let alarmErrCount: number = 0;
 
-export default function initAlarm() {
+export default function resetAlarm() {
+  alarmErrCount = 0;
   chrome.alarms.create(updateAlarm, { periodInMinutes: 2 });
   chrome.alarms.onAlarm.addListener(async (alarm) => {
-    await handleAlarm(alarm);
+    try {
+      await handleAlarm(alarm);
+    } catch (error) {
+      alarmErrCount++;
+      if (alarmErrCount > 3) {
+        console.warn("Alarm error count exceeded 3, clearing alarms");
+        chrome.alarms.clear(updateAlarm);
+      }
+    }
   });
 }

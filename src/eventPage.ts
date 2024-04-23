@@ -1,11 +1,9 @@
-import initAlarm from "./alarm";
+import resetAlarm from "./alarm";
 import { JENKINS_URL, TARGET_GITHUB_URL } from "./settings";
 import { getActiveTab, setBadge } from "./shared.helpers";
 import { tabIdToJobObj } from "./shared.state";
 import { Job } from "./shared.types";
 import { fetchJson } from "./utils";
-
-initAlarm();
 
 chrome.runtime.onConnect.addListener((port) => {
   port.onMessage.addListener(async (msg) => {
@@ -73,6 +71,7 @@ async function updateDirectJobObj(tabId: number) {
     if (job) {
       tabIdToJobObj[tabId] = job;
     }
+    resetAlarm();
     return job;
   }
 }
