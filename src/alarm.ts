@@ -11,10 +11,12 @@ async function handleAlarm(alarm: chrome.alarms.Alarm) {
     if (tabId in tabIdToJobObj) {
       const job = tabIdToJobObj[tabId];
       const { lastBuild } = await fetchJson(job?.url);
-      const { building, result } = await fetchJson(lastBuild.url);
 
-      setBadge(tabId, building, result);
-      resetBuildingAlarm(building);
+      if (lastBuild) {
+        const { building, result } = await fetchJson(lastBuild.url);
+        setBadge(tabId, building, result);
+        resetBuildingAlarm(building);
+      }
     }
   }
 }

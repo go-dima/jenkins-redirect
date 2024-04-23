@@ -3,6 +3,7 @@ import { fetchJson } from "../utils";
 import { Build } from "./BuildsList.types";
 import ResultIcon from "./ResultIcon";
 import { mockBuilds } from "../mockData/buildsResponse";
+import { Button } from "antd";
 
 interface BuildsListProps extends React.HTMLProps<HTMLDivElement> {
   jobs: {
@@ -37,16 +38,20 @@ const BuildsList: React.FC<BuildsListProps> = ({ jobs, isStory }) => {
   }, [jobs]);
 
   return (
-    <ul className="popupList">
+    <div
+      className="popupList items-stretch content-between"
+      key={`${new Date()}`}>
       {builds?.map((build, index) => (
-        <li key={index}>
-          <ResultIcon build={build} />
-          <button onClick={() => chrome.tabs.create({ url: build.url })}>
+        <div className="popupList-item" key={index}>
+          <Button
+            onClick={() => chrome.tabs.create({ url: build.url })}
+            icon={<ResultIcon build={build} />}
+            block>
             {build.displayName}
-          </button>
-        </li>
+          </Button>
+        </div>
       ))}
-    </ul>
+    </div>
   );
 };
 

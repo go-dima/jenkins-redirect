@@ -11,18 +11,22 @@ chrome.runtime.onConnect.addListener((port) => {
   port.onMessage.addListener(async (msg) => {
     if (!msg.getBuildUrls) return;
 
-    const { id: activeTabId } = await getActiveTab();
-    const job = tabIdToJobObj[activeTabId];
-    if (!job) {
-      port.postMessage({ data: [], err: "No access to Jenkins" });
-      return;
-    }
+    try {
+      const { id: activeTabId } = await getActiveTab();
+      const job = tabIdToJobObj[activeTabId];
+      if (!job) {
+        port.postMessage({ data: [], err: "No access to Jenkins" });
+        return;
+      }
 
-    const latestBuilds = await getLatestBuilds(job.url);
-    if (latestBuilds) {
-      port.postMessage({ data: latestBuilds });
-    } else {
-      port.postMessage({ data: [], err: "No builds found" });
+      const latestBuilds = await getLatestBuilds(job.url);
+      if (latestBuilds) {
+        port.postMessage({ data: latestBuilds });
+      } else {
+        port.postMessage({ data: [], err: "No builds found" });
+      }
+    } catch (error) {
+      // Port disconnected
     }
     return true;
   });

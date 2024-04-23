@@ -26,41 +26,36 @@ body {
   left: 0px;
   right: 0px;
   text-align: center;
-  height: 100%;
-  padding: 10px;
-  background-color: #282c34;
-  display: inline-block;
+  padding: 4px;
+  background-color: whitesmoke;
+  display: flex;
   flex-direction: column;
-  align-items: left;
   justify-content: center;
   font-size: calc(10px + 2vmin);
 }
 
 .popupList-header {
-  height: 200px;
-  border: 1px solid white;
+  min-height: 192px;
+  /* border: 1px solid black; */
 }
 
 .popupList{
-  list-style-type: none;
-  padding: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 6px 0px;
   margin: 0;
   font-family: Arial, sans-serif;
 }
 
-.popupList li {
+.popupList-item {
   font-size: 20px;
-  margin-bottom: 10px;
-  border: 1px solid red;
+  margin-bottom: 4px;
 }
 
-.popupList li span {
-  margin-right: 10px;
-}
-
-.popupList li a {
-  color: rgb(138, 138, 142);
-  text-decoration: none;
+.popupList button {
+  width: 100%;
+  text-align: left;
+  border-color: gray;
 }
 
 .popupList-image {
@@ -73,8 +68,6 @@ body {
   display: block;
   padding: 0;
   margin: 0;
-  background-color: #282c34;
-  color: white;
   font-size: 12px;
-  border: 1px solid blue;
+  /* border: 1px solid blue; */
 }

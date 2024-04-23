@@ -30,9 +30,7 @@ export const Popup = () => {
           (!!data?.length ? (
             <BuildsList jobs={data} />
           ) : (
-            <Spin
-              indicator={<LoadingOutlined style={{ fontSize: 24 }} spin />}
-            />
+            <Spin size="large" indicator={<LoadingOutlined spin />} />
           ))}
         {jenkinsErr && <div className="popupList-error">{jenkinsErr}</div>}
       </div>
