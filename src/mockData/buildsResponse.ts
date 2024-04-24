@@ -25,7 +25,7 @@ export const mockBuilds = [
     _class: "org.jenkinsci.plugins.workflow.job.WorkflowRun",
     building: false,
     description: null,
-    displayName: "#1530 - Aborted build",
+    displayName: "#1530 - Aborted build with longer desctiption",
     id: "1530",
     number: 1530,
     result: "ABORTED",

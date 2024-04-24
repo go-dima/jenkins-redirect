@@ -1,6 +1,6 @@
 import resetAlarm from "./alarm";
 import { JENKINS_URL, TARGET_GITHUB_URL } from "./settings";
-import { getActiveTab, setBadge } from "./shared.helpers";
+import { getActiveTab, parseRepoUrl, setBadge } from "./shared.helpers";
 import { tabIdToJobObj } from "./shared.state";
 import { Job } from "./shared.types";
 import { fetchJson } from "./utils";
@@ -45,19 +45,24 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (changeInfo.status === "complete") {
-    const job = await updateDirectJobObj(tabId);
-    const { lastBuild } = await fetchJson(job?.url);
-    const { building, result } = await fetchJson(lastBuild.url);
-    setBadge(tabId, building, result);
+    await onInit(tabId);
   }
 });
 
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
-  const job = await updateDirectJobObj(activeInfo.tabId);
-  const { lastBuild } = await fetchJson(job?.url);
-  const { building, result } = await fetchJson(lastBuild.url);
-  setBadge(activeInfo.tabId, building, result);
+  await onInit(activeInfo.tabId);
 });
+
+async function onInit(tabId: number) {
+  try {
+    const job = await updateDirectJobObj(tabId);
+    const { lastBuild } = await fetchJson(job?.url);
+    const { building, result } = await fetchJson(lastBuild.url);
+    setBadge(tabId, building, result);
+  } catch (error) {
+    console.warn("Error onInit", error);
+  }
+}
 
 async function getLatestBuilds(jobUrl: string) {
   const { builds } = await fetchJson(jobUrl);
@@ -98,20 +103,25 @@ async function getGitHubRepoBranch(): Promise<{
     return { repoName: "", branchName: "" };
   }
 
-  const { repoName, branchName } = parseRepoUrl(activeTab);
+  const {
+    repoName,
+    branchName: urlBranchName,
+    inPrPage,
+  } = parseRepoUrl(new URL(activeTab.url));
+
+  let branchName = urlBranchName;
+  if (!!inPrPage) {
+    const { sourceBranch } = await chrome.tabs.sendMessage(activeTab.id, {
+      inPrPage: true,
+    });
+    branchName = sourceBranch;
+  }
+
   return { repoName, branchName };
 }
 
 function notGithubPage(activeTab: chrome.tabs.Tab) {
   return activeTab && !activeTab.url.startsWith(TARGET_GITHUB_URL);
-}
-
-function parseRepoUrl(tab) {
-  //'https://github.com/myorg/repo-name' -> ["https:", "", "github.com", "myorg", "repo-name"]
-  const [repoUrl, urlSuffix] = tab.url.split("/tree/");
-  const repoName = repoUrl.split("/")[4];
-  const branchName = urlSuffix?.split("/")[0];
-  return { repoName, branchName };
 }
 
 async function getBranchJob(projectName: string, branchName: string = "main") {
@@ -128,7 +138,8 @@ async function getBranchJob(projectName: string, branchName: string = "main") {
       if (projectJob) {
         const { jobs: branches } = await fetchJson(projectJob.url);
         const branchJob = branches?.find(
-          (branchBuild: Job) => branchBuild.name === branchName
+          (branchBuild: Job) =>
+            branchBuild.name === encodeURIComponent(branchName)
         );
 
         return branchJob;

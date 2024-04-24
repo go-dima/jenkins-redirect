@@ -7,13 +7,14 @@ const updateAlarm = "updateAlarm";
 async function handleAlarm(alarm: chrome.alarms.Alarm) {
   if (alarm.name === updateAlarm) {
     const { id: tabId } = await getActiveTab();
-    if (tabId in tabIdToJobObj) {
+    if (tabId && tabId in tabIdToJobObj) {
       const job = tabIdToJobObj[tabId];
-      const { lastBuild } = await fetchJson(job?.url);
-
-      if (lastBuild) {
+      try {
+        const { lastBuild } = await fetchJson(job.url);
         const { building, result } = await fetchJson(lastBuild.url);
         setBadge(tabId, building, result);
+      } catch (error) {
+        // No url or no lastBuild
       }
     }
   }
@@ -30,7 +31,7 @@ export default function resetAlarm() {
     } catch (error) {
       alarmErrCount++;
       if (alarmErrCount > 3) {
-        console.warn("Alarm error count exceeded 3, clearing alarms");
+        console.warn("Extension alarm error count exceeded 3, clearing alarms");
         chrome.alarms.clear(updateAlarm);
       }
     }
