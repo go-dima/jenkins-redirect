@@ -1,4 +1,8 @@
-import { getActiveTab, setBadge } from "./shared.helpers";
+import {
+  getActiveTab,
+  setLoadingBadge,
+  setResultBadge,
+} from "./shared.helpers";
 import { tabIdToJobObj } from "./shared.state";
 import { fetchJson } from "./utils";
 
@@ -10,9 +14,10 @@ async function handleAlarm(alarm: chrome.alarms.Alarm) {
     if (tabId && tabId in tabIdToJobObj) {
       const job = tabIdToJobObj[tabId];
       try {
+        setLoadingBadge(tabId);
         const { lastBuild } = await fetchJson(job.url);
         const { building, result } = await fetchJson(lastBuild.url);
-        setBadge(tabId, building, result);
+        setResultBadge(tabId, building, result);
       } catch (error) {
         // No url or no lastBuild
       }

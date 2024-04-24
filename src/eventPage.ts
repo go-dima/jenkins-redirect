@@ -1,6 +1,12 @@
 import resetAlarm from "./alarm";
 import { JENKINS_URL, TARGET_GITHUB_URL } from "./settings";
-import { getActiveTab, parseRepoUrl, setBadge } from "./shared.helpers";
+import {
+  clearBadge,
+  getActiveTab,
+  parseRepoUrl,
+  setLoadingBadge,
+  setResultBadge,
+} from "./shared.helpers";
 import { tabIdToJobObj } from "./shared.state";
 import { Job } from "./shared.types";
 import { fetchJson } from "./utils";
@@ -55,10 +61,11 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
 
 async function onInit(tabId: number) {
   try {
+    clearBadge(tabId);
     const job = await updateDirectJobObj(tabId);
     const { lastBuild } = await fetchJson(job?.url);
     const { building, result } = await fetchJson(lastBuild.url);
-    setBadge(tabId, building, result);
+    setResultBadge(tabId, building, result);
   } catch (error) {
     console.warn("Error onInit", error);
   }
@@ -72,6 +79,7 @@ async function getLatestBuilds(jobUrl: string) {
 async function updateDirectJobObj(tabId: number) {
   const { repoName, branchName } = await getGitHubRepoBranch();
   if (repoName) {
+    setLoadingBadge(tabId);
     const job = await getBranchJob(repoName, branchName);
     if (job) {
       tabIdToJobObj[tabId] = job;

@@ -1,6 +1,6 @@
 import { ParsedUrl } from "./shared.types";
 
-export async function setBadge(
+export async function setResultBadge(
   tabId: number,
   building: boolean,
   result: string
@@ -21,6 +21,18 @@ export async function setBadge(
   } catch (error) {
     // Don't care
   }
+}
+
+export async function setLoadingBadge(tabId: number) {
+  chrome.action.setBadgeText({ text: ".", tabId });
+  chrome.action.setBadgeBackgroundColor({
+    color: "#808080",
+    tabId,
+  });
+}
+
+export function clearBadge(tabId: number) {
+  chrome.action.setBadgeText({ text: "", tabId });
 }
 
 export async function getActiveTab() {
