@@ -56,7 +56,19 @@ body {
   width: 100%;
   text-align: left;
   border-color: gray;
-  overflow: hidden;;
+  display: flex;
+  flex-flow: row nowrap;
+
+  > .ant-btn-icon {
+    flex: 1 1 25px;
+    line-height: unset;
+  }
+
+  > span {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }
 
 .popupList-image {
