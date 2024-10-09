@@ -37,9 +37,19 @@ chrome.runtime.onConnect.addListener((port) => {
 });
 
 chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
+  const activeTab = await getActiveTab();
   if (request.loadJenkinsPage) {
-    const activeTab = await getActiveTab();
     loadJenkinsPage(activeTab);
+  } else if (request.loadBuildPage) {
+    if (tabIdToJobObj[activeTab.id]) {
+      chrome.tabs.create({ url: `${tabIdToJobObj[activeTab.id].url}/build` });
+      return;
+    }
+  } else if (request.loadMainPage) {
+    if (tabIdToJobObj[activeTab.id]) {
+      chrome.tabs.create({ url: `${tabIdToJobObj[activeTab.id].main}/build` });
+      return;
+    }
   }
 });
 
@@ -142,14 +152,16 @@ async function getBranchJob(projectName: string, branchName: string = "main") {
       const projectJob = projectJobs.find((job: Job) =>
         job.name.includes(projectName)
       );
-
       if (projectJob) {
         const { jobs: branches } = await fetchJson(projectJob.url);
         const branchJob = branches?.find(
           (branchBuild: Job) =>
             branchBuild.name === encodeURIComponent(branchName)
         );
-
+        branchJob.main = branchJob.url.replace(
+          encodeURIComponent(encodeURIComponent(branchName)),
+          "main"
+        );
         return branchJob;
       }
     }

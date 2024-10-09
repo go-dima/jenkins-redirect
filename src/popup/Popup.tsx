@@ -4,8 +4,9 @@ import React from "react";
 import BuildsList from "./BuildsList";
 import { Spin } from "antd";
 import { LoadingOutlined } from "@ant-design/icons";
+import PopupFooterButtons from "./PopupFooterButtons";
 
-export const Popup = () => {
+const Popup = () => {
   // Long living connection to the background script
   const [port] = useState(chrome.runtime.connect({ name: "popup" }));
   const [data, setData] = useState([]);
@@ -35,14 +36,7 @@ export const Popup = () => {
         {jenkinsErr && <div className="popupList-error">{jenkinsErr}</div>}
       </div>
       <div className="popupList-footer">
-        <img
-          className="popupList-image"
-          src="../logo.png"
-          alt={"Go to Jenkins"}
-          onClick={() => {
-            chrome.runtime.sendMessage({ loadJenkinsPage: true });
-          }}
-        />
+        <PopupFooterButtons />
       </div>
     </div>
   );

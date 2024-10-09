@@ -1,3 +1,7 @@
+import React from "react";
+import ReactDOM from "react-dom/client";
+import JenkinsButtons from "./popup/JenkinsButtons";
+import "./styles/content.css";
 import { fetchJson } from "./utils";
 
 const changeTitle = async () => {
@@ -59,3 +63,31 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse({ sourceBranch, targetBranch });
   }
 });
+
+const addFooter = () => {
+  const parentElement = document.getElementsByClassName(
+    "discussion-timeline-actions"
+  )[0];
+
+  if (parentElement) {
+    const newElement = createElement();
+
+    // Render the React component
+    const root = ReactDOM.createRoot(newElement);
+    root.render(React.createElement(JenkinsButtons));
+    // add root as first child of parentElement
+    parentElement.prepend(newElement);
+  }
+};
+
+addFooter();
+
+function createElement(): HTMLDivElement {
+  const newElement = document.createElement("div");
+  newElement.className = "popupList-buttons";
+  newElement.style.display = "flex";
+  newElement.style.alignItems = "center";
+  newElement.style.justifyContent = "space-around";
+  newElement.style.marginTop = "4px";
+  return newElement;
+}
