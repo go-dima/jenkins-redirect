@@ -16,3 +16,7 @@ export type PrBranches = {
   sourceBranch: string;
   targetBranch: string;
 };
+
+export interface JobWithMain extends Job {
+  main: string;
+}

@@ -3,7 +3,7 @@ import {
   setLoadingBadge,
   setResultBadge,
 } from "./shared.helpers";
-import { tabIdToJobObj } from "./shared.state";
+import { state } from "./shared.state";
 import { fetchJson } from "./utils";
 
 const updateAlarm = "updateAlarm";
@@ -11,11 +11,11 @@ const updateAlarm = "updateAlarm";
 async function handleAlarm(alarm: chrome.alarms.Alarm) {
   if (alarm.name === updateAlarm) {
     const { id: tabId } = await getActiveTab();
-    if (tabId && tabId in tabIdToJobObj) {
-      const job = tabIdToJobObj[tabId];
+    if (tabId && state.isTabExist(tabId)) {
       try {
+        const { url } = state.getTab(tabId);
         setLoadingBadge(tabId);
-        const { lastBuild } = await fetchJson(job.url);
+        const { lastBuild } = await fetchJson(url);
         const { building, result } = await fetchJson(lastBuild.url);
         setResultBadge(tabId, building, result);
       } catch (error) {

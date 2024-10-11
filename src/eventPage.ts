@@ -7,8 +7,8 @@ import {
   setLoadingBadge,
   setResultBadge,
 } from "./shared.helpers";
-import { tabIdToJobObj } from "./shared.state";
-import { Job } from "./shared.types";
+import { state } from "./shared.state";
+import { Job, JobWithMain } from "./shared.types";
 import { fetchJson } from "./utils";
 
 chrome.runtime.onConnect.addListener((port) => {
@@ -17,13 +17,13 @@ chrome.runtime.onConnect.addListener((port) => {
 
     try {
       const { id: activeTabId } = await getActiveTab();
-      const job = tabIdToJobObj[activeTabId];
-      if (!job) {
+      if (!state.isTabExist(activeTabId)) {
         port.postMessage({ data: [], err: "No access to Jenkins" });
         return;
       }
 
-      const latestBuilds = await getLatestBuilds(job.url);
+      const { url } = state.getTab(activeTabId);
+      const latestBuilds = await getLatestBuilds(url);
       if (latestBuilds) {
         port.postMessage({ data: latestBuilds });
       } else {
@@ -37,26 +37,24 @@ chrome.runtime.onConnect.addListener((port) => {
 });
 
 chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
-  const activeTab = await getActiveTab();
+  const { id: activeTabId } = await getActiveTab();
   if (request.loadJenkinsPage) {
-    loadJenkinsPage(activeTab);
+    loadJenkinsPage(activeTabId);
   } else if (request.loadBuildPage) {
-    if (tabIdToJobObj[activeTab.id]) {
-      chrome.tabs.create({ url: `${tabIdToJobObj[activeTab.id].url}/build` });
+    if (state.isTabExist(activeTabId)) {
+      chrome.tabs.create({ url: `${state.getTab(activeTabId).url}/build` });
       return;
     }
   } else if (request.loadMainPage) {
-    if (tabIdToJobObj[activeTab.id]) {
-      chrome.tabs.create({ url: `${tabIdToJobObj[activeTab.id].main}/build` });
+    if (state.isTabExist(activeTabId)) {
+      chrome.tabs.create({ url: `${state.getTab(activeTabId).main}/build` });
       return;
     }
   }
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
-  if (tabId in tabIdToJobObj) {
-    delete tabIdToJobObj[tabId];
-  }
+  state.removeTab(tabId);
 });
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
@@ -73,11 +71,15 @@ async function onInit(tabId: number) {
   try {
     clearBadge(tabId);
     const job = await updateDirectJobObj(tabId);
-    const { lastBuild } = await fetchJson(job?.url);
+    if (!job) {
+      return;
+    }
+
+    const { lastBuild } = await fetchJson(job.url);
     const { building, result } = await fetchJson(lastBuild.url);
     setResultBadge(tabId, building, result);
   } catch (error) {
-    console.warn("Error onInit", error);
+    console.error("Error onInit", error);
   }
 }
 
@@ -91,17 +93,18 @@ async function updateDirectJobObj(tabId: number) {
   if (repoName) {
     setLoadingBadge(tabId);
     const job = await getBranchJob(repoName, branchName);
+
     if (job) {
-      tabIdToJobObj[tabId] = job;
+    state.setTab(tabId, job);
     }
     resetAlarm();
     return job;
   }
-}
 
-async function loadJenkinsPage(tab: chrome.tabs.Tab) {
-  if (tabIdToJobObj[tab.id]) {
-    chrome.tabs.create({ url: tabIdToJobObj[tab.id].url });
+async function loadJenkinsPage(tabId: number) {
+  if (state.isTabExist(tabId)) {
+    const { url } = state.getTab(tabId);
+    chrome.tabs.create({ url });
     return;
   } else {
     const { repoName, branchName } = await getGitHubRepoBranch();
