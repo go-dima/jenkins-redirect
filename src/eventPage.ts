@@ -9,7 +9,7 @@ import {
 } from "./shared.helpers";
 import { state } from "./shared.state";
 import { Job, JobWithMain } from "./shared.types";
-import { fetchJson } from "./utils";
+import { fetchJson, loadJenkinsJobs } from "./utils";
 
 chrome.runtime.onConnect.addListener((port) => {
   port.onMessage.addListener(async (msg) => {
@@ -29,6 +29,19 @@ chrome.runtime.onConnect.addListener((port) => {
       } else {
         port.postMessage({ data: [], err: "No builds found" });
       }
+    } catch (error) {
+      // Port disconnected
+    }
+    return true;
+  });
+  port.onMessage.addListener(async (msg) => {
+    if (!msg.loadProbe) return;
+    try {
+      const { id: activeTabId } = await getActiveTab();
+      port.postMessage({
+        foundJob: state.isTabExist(activeTabId),
+        jenkinsReachable: state.getJenkinsReachable(),
+      });
     } catch (error) {
       // Port disconnected
     }
@@ -68,6 +81,12 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
 });
 
 async function onInit(tabId: number) {
+  chrome.tabs.get(tabId, async (tab) => {
+    if (!tab || !tab.url.startsWith(TARGET_GITHUB_URL)) {
+      return;
+    }
+  });
+
   try {
     clearBadge(tabId);
     const job = await updateDirectJobObj(tabId);
@@ -88,18 +107,21 @@ async function getLatestBuilds(jobUrl: string) {
   return builds?.slice(0, 5);
 }
 
-async function updateDirectJobObj(tabId: number) {
+async function updateDirectJobObj(tabId: number): Promise<JobWithMain | null> {
   const { repoName, branchName } = await getGitHubRepoBranch();
-  if (repoName) {
-    setLoadingBadge(tabId);
-    const job = await getBranchJob(repoName, branchName);
-
-    if (job) {
-    state.setTab(tabId, job);
-    }
-    resetAlarm();
-    return job;
+  if (!repoName) {
+    return;
   }
+
+  setLoadingBadge(tabId);
+  const job = await getBranchJob(repoName, branchName);
+
+  if (job) {
+    state.setTab(tabId, job);
+  }
+  resetAlarm();
+  return job;
+}
 
 async function loadJenkinsPage(tabId: number) {
   if (state.isTabExist(tabId)) {
@@ -145,22 +167,45 @@ function notGithubPage(activeTab: chrome.tabs.Tab) {
   return activeTab && !activeTab.url.startsWith(TARGET_GITHUB_URL);
 }
 
-async function getBranchJob(projectName: string, branchName: string = "main") {
+async function getBranchJob(
+  projectName: string,
+  branchName: string = "main"
+): Promise<JobWithMain | null> {
   try {
-    const { jobs }: { jobs: Job[] } = await fetchJson(JENKINS_URL);
-    const jobData = await Promise.all(jobs?.map((job) => fetchJson(job.url)));
+    // todo: Use fetchJerkinsJobs instead of loadJenkinsJobs
+    const { jobs }: { jobs: Job[] } = await loadJenkinsJobs();
+    if (jobs === undefined) {
+      return null;
+    }
 
+    const jobData = await Promise.all(jobs?.map((job) => fetchJson(job.url)));
+    ``;
     for (let i = 0; i < jobData.length; i++) {
       const projectJobs = jobData[i].jobs || [];
       const projectJob = projectJobs.find((job: Job) =>
         job.name.includes(projectName)
       );
       if (projectJob) {
-        const { jobs: branches } = await fetchJson(projectJob.url);
+        const { jobs: branches }: { jobs: JobWithMain[] } = await fetchJson(
+          projectJob.url
+        );
+        console.log("branches", branches);
         const branchJob = branches?.find(
           (branchBuild: Job) =>
             branchBuild.name === encodeURIComponent(branchName)
         );
+
+        console.log("branchJob", branchJob);
+        if (!branchJob) {
+          const main = branches?.find(
+            (branchBuild: Job) =>
+              branchBuild.name === encodeURIComponent("main")
+          );
+          console.log("main", main);
+          main.main = main.url;
+          return main;
+        }
+
         branchJob.main = branchJob.url.replace(
           encodeURIComponent(encodeURIComponent(branchName)),
           "main"
@@ -171,6 +216,7 @@ async function getBranchJob(projectName: string, branchName: string = "main") {
 
     return null;
   } catch (error) {
+    console.error("Error getBranchJob", error);
     return null;
   }
 }

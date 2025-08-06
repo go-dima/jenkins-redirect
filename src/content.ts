@@ -46,22 +46,22 @@ if (jenkinsRegex.test(window.location.href)) {
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.inPrPage) {
-    const branchElements = Array.from(
-      document.querySelectorAll(
-        "span.commit-ref > a > span.css-truncate-target"
-      )
-    );
-    const branchNames = branchElements.map(
-      (element: HTMLElement) => element.innerText
-    );
-
-    // Remove duplicates - return the first instance of each branch name
-    const [targetBranch, sourceBranch] = branchNames.filter(
-      (item, index) => branchNames.indexOf(item) === index
-    );
-    sendResponse({ sourceBranch, targetBranch });
+  if (!message.inPrPage) {
+    return;
   }
+
+  const branchElements = Array.from(
+    document.querySelectorAll("span.commit-ref > a > span.css-truncate-target")
+  );
+  const branchNames = branchElements.map(
+    (element: HTMLElement) => element.innerText
+  );
+
+  // Remove duplicates - return the first instance of each branch name
+  const [targetBranch, sourceBranch] = branchNames.filter(
+    (item, index) => branchNames.indexOf(item) === index
+  );
+  sendResponse({ sourceBranch, targetBranch });
 });
 
 const addFooter = () => {
