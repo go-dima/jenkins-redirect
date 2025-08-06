@@ -27,6 +27,11 @@ const addFooter = () => {
     "discussion-timeline-actions"
   )[0];
 
+  const existingButtons = document.getElementsByClassName(buttonsClassName);
+  if (!!existingButtons.length) {
+    return; // No buttons to add
+  }
+
   if (parentElement) {
     const newElement = createElement();
 
@@ -38,11 +43,17 @@ const addFooter = () => {
   }
 };
 
-addFooter();
+chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
+  if (message.initFooter) {
+    addFooter();
+  }
+});
+
+const buttonsClassName = "popupList-buttons";
 
 function createElement(): HTMLDivElement {
   const newElement = document.createElement("div");
-  newElement.className = "popupList-buttons";
+  newElement.className = buttonsClassName;
   newElement.style.display = "flex";
   newElement.style.alignItems = "center";
   newElement.style.justifyContent = "space-around";

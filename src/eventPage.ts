@@ -30,7 +30,13 @@ chrome.runtime.onConnect.addListener((port) => {
         port.postMessage({ data: [], err: "No builds found" });
       }
     } catch (error) {
-      // Port disconnected
+      // Port disconnected or other connection error
+      console.warn("Port connection error:", error.message);
+      try {
+        port.postMessage({ data: [], err: "Connection lost" });
+      } catch (postError) {
+        // Port is completely disconnected
+      }
     }
     return true;
   });
@@ -43,7 +49,13 @@ chrome.runtime.onConnect.addListener((port) => {
         jenkinsReachable: state.getJenkinsReachable(),
       });
     } catch (error) {
-      // Port disconnected
+      // Port disconnected or other connection error
+      console.warn("Port connection error:", error.message);
+      try {
+        port.postMessage({ data: [], err: "Connection lost" });
+      } catch (postError) {
+        // Port is completely disconnected
+      }
     }
     return true;
   });
@@ -81,19 +93,30 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
 });
 
 async function onInit(tabId: number) {
-  chrome.tabs.get(tabId, async (tab) => {
-    if (!tab || !tab.url.startsWith(TARGET_GITHUB_URL)) {
-      return;
-    }
-  });
+  const { url: tabUrl } = await chrome.tabs.get(tabId);
+  if (!tabUrl || !tabUrl.startsWith(TARGET_GITHUB_URL)) {
+    return;
+  }
 
   try {
+    chrome.tabs
+      .sendMessage(tabId, {
+        initFooter: true,
+      })
+      .catch((error) => {
+        if (error.message.includes("Receiving end does not exist.")) {
+          // Ignore the error, as it means the content script is not ready yet
+          return;
+        }
+        console.warn("Content script not ready for tab", tabId, error.message);
+      });
+
     clearBadge(tabId);
+
     const job = await updateDirectJobObj(tabId);
     if (!job) {
       return;
     }
-
     const { lastBuild } = await fetchJson(job.url);
     const { building, result } = await fetchJson(lastBuild.url);
     setResultBadge(tabId, building, result);
@@ -145,7 +168,6 @@ async function getGitHubRepoBranch(): Promise<{
   if (notGithubPage(activeTab)) {
     return { repoName: "", branchName: "" };
   }
-
   const {
     repoName,
     branchName: urlBranchName,
@@ -154,10 +176,22 @@ async function getGitHubRepoBranch(): Promise<{
 
   let branchName = urlBranchName;
   if (!!inPrPage) {
-    const { sourceBranch } = await chrome.tabs.sendMessage(activeTab.id, {
-      inPrPage: true,
-    });
-    branchName = sourceBranch;
+    try {
+      const { sourceBranch } = await chrome.tabs.sendMessage(activeTab.id, {
+        inPrPage: true,
+      });
+      branchName = sourceBranch;
+    } catch (error) {
+      if (error.message.includes("Receiving end does not exist.")) {
+        // If we can't get branch from content script, this might happen if the content script is not ready yet
+        return { repoName, branchName };
+      }
+      console.warn(
+        "Could not get branch from content script for tab",
+        activeTab.id,
+        error.message
+      );
+    }
   }
 
   return { repoName, branchName };
@@ -179,7 +213,7 @@ async function getBranchJob(
     }
 
     const jobData = await Promise.all(jobs?.map((job) => fetchJson(job.url)));
-    ``;
+
     for (let i = 0; i < jobData.length; i++) {
       const projectJobs = jobData[i].jobs || [];
       const projectJob = projectJobs.find((job: Job) =>
@@ -201,7 +235,6 @@ async function getBranchJob(
             (branchBuild: Job) =>
               branchBuild.name === encodeURIComponent("main")
           );
-          console.log("main", main);
           main.main = main.url;
           return main;
         }
