@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Jenkins <--> Github Extension",
   "description": "An extension to make transitioning between Jenkins and GitHub easier",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "action": {
     "default_title": "Jenkins",
     "default_popup": "js/popup.html"

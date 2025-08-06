@@ -3,6 +3,7 @@ var webpack = require("webpack"),
   CopyWebpackPlugin = require("copy-webpack-plugin"),
   HtmlWebpackPlugin = require("html-webpack-plugin");
 MiniCssExtractPlugin = require("mini-css-extract-plugin");
+const Dotenv = require("dotenv-webpack");
 
 var { CleanWebpackPlugin } = require("clean-webpack-plugin");
 
@@ -44,6 +45,7 @@ module.exports = {
   plugins: [
     new CleanWebpackPlugin({ verbose: false }),
     new webpack.ProgressPlugin(),
+    new Dotenv(),
     new CopyWebpackPlugin({
       patterns: [
         {
