@@ -1,9 +1,11 @@
 import React from "react";
 import { Build } from "./BuildsList.types";
+import { Spin } from "antd";
+import { LoadingOutlined } from "@ant-design/icons";
 
 const getIconForResult = (isBuilding: boolean, result: string) => {
   if (isBuilding) {
-    return "🛠️";
+    return <Spin indicator={<LoadingOutlined spin />} size="small" />;
   }
 
   switch (result) {
